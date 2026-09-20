@@ -18,7 +18,7 @@ import { Button } from "../../components/ui/button";
 import { CopyButton } from "../../components/ui/copy-button";
 import { EmptyState } from "../../components/ui/empty-state";
 import { GlyphIcon } from "../../components/ui/glyph-icon";
-import { CloseIcon, EXTERNAL_LINK_ICON } from "../../components/ui/icons";
+import { BROWSER_ICON, CloseIcon, EXTERNAL_LINK_ICON } from "../../components/ui/icons";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { apiErrorText } from "../../lib/api-error";
@@ -27,6 +27,8 @@ import { S } from "../../lib/strings";
 import { toneDot } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
+import { newBrowserTab } from "../browser/browser-tabs";
+import { addBrowserTab } from "../dock/dock-state";
 import { dialLine, forwardTone, listenerLine, parsePort } from "./port-forward-facts";
 
 /** How often the facts are re-read while the tab is showing. */
@@ -151,6 +153,17 @@ function MachinePorts({
                       {S.ports.connections(forward.open)}
                     </span>
                   )}
+                  <button
+                    type="button"
+                    title={S.browser.openInBrowser}
+                    aria-label={S.browser.openInBrowser}
+                    // The Browser's localhost is the MACHINE's: the remote port, not the
+                    // local one — it reaches the same server through the same connection.
+                    onClick={() => addBrowserTab(newBrowserTab(`localhost:${forward.remotePort}`))}
+                    className={ROW_BUTTON}
+                  >
+                    <GlyphIcon d={BROWSER_ICON} size={ICON_SIZE.inlineGlyph} />
+                  </button>
                   <CopyButton text={address} label={S.ports.copyAddress} className={ROW_BUTTON} />
                   <a
                     href={`http://${address}/`}
