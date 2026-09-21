@@ -93,13 +93,16 @@ The dividing line between the two levels is the **resource registry**. It sits o
 
 ### Swap semantics
 
-**Unparked state HARD-STOPS** at a swap. Pending approvals are denied and active runs abort. The scheduler, the messaging bridge and machine connections stop with their App, and the next App rebuilds them from the claimed capabilities. Between the old App's dispose and the new App's boot, the kernel waits for the aborted runs to drain, for up to 5 s.
+**Unparked state HARD-STOPS** at a swap. The scheduler, the messaging bridge and machine connections stop with their App, and the next App rebuilds them from the claimed capabilities.
+
+Agent runs are not among them. The Session runtime's memory — loaded Sessions, running Tasks, pending approvals, queued follow-ups — lives in one node, `AgentState`, which holds data and no logic. The leaving App registers it as `agentState:state` together with the closed shape of the `AgentState` interface as its build declares it: the interface and everything it reaches through the table, printed as one string. A successor that prints the same string boots over that very object, so a running Task goes on and whatever arrives after the swap is handled by the new logic on the same state. A Task already in flight finishes on the code that launched it; new code applies from the Session's next Task. A successor that prints anything else disposes the group, which stops the runs with the predecessor's own logic, and then starts the Sessions that were running again from their Traces.
 
 What rides across:
 
 | What survives | How |
 | --- | --- |
 | Terminal ptys | Parked in the registry; the new App reclaims their handles |
+| The Agent state | Registered in the registry; a successor whose `AgentState` has the same closed shape boots over it |
 | Machine tunnels | ssh child processes the successor adopts by pid |
 | Process-level singletons | Live in the process core, outside every App |
 
@@ -175,7 +178,7 @@ Split by frequency:
 
 ### Re-assembly
 
-A change to a Project's plugin list applies without restarting the process. The runtime holds the shell that `platformImpl.create` returns, and every member of its API forwards to the inner App of the moment. `reassemble()` runs the kernel's own `upgrade` over that inner instance with the same bundle and the same parked document: the swap a hot push performs, without a new bundle. Everything under [Swap semantics](#swap-semantics) applies, so agent runs in progress are stopped in every Project.
+A change to a Project's plugin list applies without restarting the process. The runtime holds the shell that `platformImpl.create` returns, and every member of its API forwards to the inner App of the moment. `reassemble()` runs the kernel's own `upgrade` over that inner instance with the same bundle and the same parked document: the swap a hot push performs, without a new bundle. Everything under [Swap semantics](#swap-semantics) applies; the build is the same on both sides, so the Agent state always rides across and no run is interrupted.
 
 The plugin routes hand their edit to the re-assembly, which writes it in its own queue, so two edits of one file never interleave. When the new App fails to boot, the edit is undone first and the previous App is booted again from its document, so the list reads as it did before the change. Nothing in `packages/hmr` takes part, which is why re-assembly works on every runtime. The routes are listed in [Server API](/server-api#plugin-registry-and-project-plugins).
 
